@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class DonorSchedulingScreen extends StatefulWidget {
   @override
@@ -7,18 +8,34 @@ class DonorSchedulingScreen extends StatefulWidget {
 
 class _DonorSchedulingScreenState extends State<DonorSchedulingScreen> {
   List<Event> _events = [];
-
-  // Form field controllers
-  final TextEditingController _hospitalController = TextEditingController();
-  final TextEditingController _timeController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _contactController = TextEditingController();
+  final TextEditingController _ageController = TextEditingController();
   String _selectedBloodType = 'A+';
+  String? _selectedDate;
+  String? _selectedLocation;
+  String? _selectedTime;
+
+  List<String> availableDates = [
+    '10 Feb 2025',
+    '15 Feb 2025',
+    '20 Feb 2025'
+  ]; // Replace with drive data
+  List<String> locations = ['Hospital A', 'Hospital B', 'Community Center'];
+  List<String> availableTimes = [
+    '08:00 AM',
+    '10:00 AM',
+    '12:00 PM',
+    '02:00 PM',
+    '04:00 PM'
+  ]; // Predefined times
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Donor Scheduling')),
       floatingActionButton: FloatingActionButton(
-        onPressed: _showAddEventDialog,
+        onPressed: () => _showAddEventDialog(context),
         child: Icon(Icons.add),
       ),
       body: Column(
@@ -38,9 +55,33 @@ class _DonorSchedulingScreenState extends State<DonorSchedulingScreen> {
         children: [
           Text('Schedule a New Appointment',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          _buildTextField(_hospitalController, 'Hospital/Donor Name'),
-          _buildTextField(_timeController, 'Time (e.g., 10:00 AM)'),
-          _buildDropdownButton(),
+          _buildTextField(_nameController, 'Donor Name'),
+          _buildDropdownButton('Select Time', _selectedTime, availableTimes,
+              (newValue) {
+            setState(() {
+              _selectedTime = newValue;
+            });
+          }),
+          _buildDropdownButton('Blood Type', _selectedBloodType,
+              ['A+', 'B+', 'AB+', 'O+', 'A-', 'B-', 'AB-', 'O-'], (newValue) {
+            setState(() {
+              _selectedBloodType = newValue!;
+            });
+          }),
+          _buildDropdownButton('Select Date', _selectedDate, availableDates,
+              (newValue) {
+            setState(() {
+              _selectedDate = newValue;
+            });
+          }),
+          _buildDropdownButton('Select Location', _selectedLocation, locations,
+              (newValue) {
+            setState(() {
+              _selectedLocation = newValue;
+            });
+          }),
+          _buildTextField(_contactController, 'Contact Number'),
+          _buildTextField(_ageController, 'Age'),
           SizedBox(height: 20),
           ElevatedButton(
             onPressed: _addEvent,
@@ -63,11 +104,8 @@ class _DonorSchedulingScreenState extends State<DonorSchedulingScreen> {
             leading: Icon(Icons.bloodtype, color: Colors.red),
             title: Text(event.title,
                 style: TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('${event.time} - Blood Type: ${event.bloodType}'),
-            trailing: IconButton(
-              icon: Icon(Icons.edit, color: Colors.blue),
-              onPressed: () => _showEditEventDialog(index),
-            ),
+            subtitle: Text(
+                '${event.time} - ${event.bloodType}\nDate: ${event.date}\nLocation: ${event.location}\nContact: ${event.contact}\nAge: ${event.age}'),
           ),
         );
       },
@@ -75,132 +113,30 @@ class _DonorSchedulingScreenState extends State<DonorSchedulingScreen> {
   }
 
   void _addEvent() {
-    String title = _hospitalController.text;
-    String time = _timeController.text;
-
-    if (title.isNotEmpty && time.isNotEmpty) {
+    if (_nameController.text.isNotEmpty &&
+        _selectedTime != null &&
+        _selectedDate != null &&
+        _selectedLocation != null) {
       setState(() {
-        _events.add(Event(title, time, _selectedBloodType));
+        _events.add(Event(
+          _nameController.text,
+          _selectedTime!,
+          _selectedBloodType,
+          _selectedDate!,
+          _selectedLocation!,
+          _contactController.text,
+          _ageController.text,
+        ));
       });
 
-      // Clear form fields
-      _hospitalController.clear();
-      _timeController.clear();
+      _nameController.clear();
+      _contactController.clear();
+      _ageController.clear();
       _selectedBloodType = 'A+';
+      _selectedTime = null;
+      _selectedDate = null;
+      _selectedLocation = null;
     }
-  }
-
-  Future<void> _showAddEventDialog() async {
-    TextEditingController hospitalController = TextEditingController();
-    TextEditingController timeController = TextEditingController();
-    String selectedBloodType = 'A+';
-
-    return showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: Text('New Appointment'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildTextField(hospitalController, 'Hospital/Donor Name'),
-                  _buildTextField(timeController, 'Time'),
-                  DropdownButton<String>(
-                    value: selectedBloodType,
-                    onChanged: (newValue) {
-                      setDialogState(() {
-                        selectedBloodType = newValue!;
-                      });
-                    },
-                    items: ['A+', 'B+', 'AB+', 'O+', 'A-', 'B-', 'AB-', 'O-']
-                        .map((type) =>
-                            DropdownMenuItem(value: type, child: Text(type)))
-                        .toList(),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text('Cancel'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    if (hospitalController.text.isNotEmpty &&
-                        timeController.text.isNotEmpty) {
-                      setState(() {
-                        _events.add(Event(hospitalController.text,
-                            timeController.text, selectedBloodType));
-                      });
-                    }
-                    Navigator.pop(context);
-                  },
-                  child: Text('Save'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Future<void> _showEditEventDialog(int index) async {
-    final TextEditingController titleController =
-        TextEditingController(text: _events[index].title);
-    final TextEditingController timeController =
-        TextEditingController(text: _events[index].time);
-    String bloodType = _events[index].bloodType;
-
-    return showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: Text('Edit Appointment'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildTextField(titleController, 'Hospital/Donor Name'),
-                  _buildTextField(timeController, 'Time'),
-                  DropdownButton<String>(
-                    value: bloodType,
-                    onChanged: (newValue) {
-                      setDialogState(() {
-                        bloodType = newValue!;
-                      });
-                    },
-                    items: ['A+', 'B+', 'AB+', 'O+', 'A-', 'B-', 'AB-', 'O-']
-                        .map((type) =>
-                            DropdownMenuItem(value: type, child: Text(type)))
-                        .toList(),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text('Cancel'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _events[index] = Event(
-                          titleController.text, timeController.text, bloodType);
-                    });
-                    Navigator.pop(context);
-                  },
-                  child: Text('Save'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
   }
 
   Widget _buildTextField(TextEditingController controller, String labelText) {
@@ -210,22 +146,88 @@ class _DonorSchedulingScreenState extends State<DonorSchedulingScreen> {
     );
   }
 
-  Widget _buildDropdownButton() {
+  Widget _buildDropdownButton(String label, String? selectedValue,
+      List<String> items, ValueChanged<String?> onChanged) {
     return DropdownButton<String>(
-      value: _selectedBloodType,
-      onChanged: (newValue) {
-        setState(() {
-          _selectedBloodType = newValue!;
-        });
-      },
-      items: ['A+', 'B+', 'AB+', 'O+', 'A-', 'B-', 'AB-', 'O-']
+      hint: Text(label),
+      value: selectedValue,
+      onChanged: onChanged,
+      items: items
           .map((type) => DropdownMenuItem(value: type, child: Text(type)))
           .toList(),
+    );
+  }
+
+  // Method to show the dialog for adding an event
+  void _showAddEventDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Add Event'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildTextField(_nameController, 'Donor Name'),
+              _buildDropdownButton('Select Time', _selectedTime, availableTimes,
+                  (newValue) {
+                setState(() {
+                  _selectedTime = newValue;
+                });
+              }),
+              _buildDropdownButton('Blood Type', _selectedBloodType, [
+                'A+',
+                'B+',
+                'AB+',
+                'O+',
+                'A-',
+                'B-',
+                'AB-',
+                'O-'
+              ], (newValue) {
+                setState(() {
+                  _selectedBloodType = newValue!;
+                });
+              }),
+              _buildDropdownButton('Select Date', _selectedDate, availableDates,
+                  (newValue) {
+                setState(() {
+                  _selectedDate = newValue;
+                });
+              }),
+              _buildDropdownButton(
+                  'Select Location', _selectedLocation, locations, (newValue) {
+                setState(() {
+                  _selectedLocation = newValue;
+                });
+              }),
+              _buildTextField(_contactController, 'Contact Number'),
+              _buildTextField(_ageController, 'Age'),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                _addEvent();
+                Navigator.of(context).pop();
+              },
+              child: Text('Save'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
 
 class Event {
-  String title, time, bloodType;
-  Event(this.title, this.time, this.bloodType);
+  String title, time, bloodType, date, location, contact, age;
+  Event(this.title, this.time, this.bloodType, this.date, this.location,
+      this.contact, this.age);
 }
